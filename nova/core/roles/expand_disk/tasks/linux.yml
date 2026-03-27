@@ -1,0 +1,13 @@
+---
+- name: Resizing physical volume...
+  community.general.lvm_pv:
+    device: /dev/sda3
+    resize: true
+    state: present
+
+- name: Extending logical volume and resizing filesystem...
+  community.general.lvol:
+    vg: ubuntu-vg
+    lv: ubuntu-lv
+    size: +100%FREE
+    resizefs: true

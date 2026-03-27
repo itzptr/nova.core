@@ -29,7 +29,7 @@ os_configuration_wait_for_site_url: https://google.com # URL to wait for
 # How many times to retry waiting for site defined in os_configuration_wait_for_site_url respond with HTTP 200 before moving on with Linux hosts
 os_configuration_wait_for_site_retries: 30
 
-os_configuration_expand_os_disk_role_name: {} # Define your OS disk expansion role name in your host or group vars to included it with this role
+os_configuration_expand_os_disk_role_name: nova.core.expand_disk # Define your OS disk expansion role name in your host or group vars to included it with this role
 infra_env: {}
 ntp_servers:
   - "0.pool.ntp.org"
