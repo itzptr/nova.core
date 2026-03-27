@@ -4,3 +4,5 @@ This is an Ansible collection consisting of some roles and an inventory plugin f
 
 - [Clarified Security](https://www.clarifiedsecurity.com)
 - [CCDCOE](https://ccdcoe.org/)
+
+This is a test change
