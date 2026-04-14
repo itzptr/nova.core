@@ -90,6 +90,7 @@
     - keycloak
     - providentia
     - nexus
+    - gitlab
   when: monolith_single_service is not defined
 
 - name: Including following single service configuration tasks...
@@ -141,7 +142,7 @@
               X-Vault-Token: "{{ vault_access_token }}"
             body:
               common_name: "{{ fqdn }}"
-              alt_names: "{{ monolith_providentia_fqdn }},{{ monolith_nexus_fqdn }},{{ monolith_keycloak_fqdn }},{{ monolith_vault_fqdn }}"
+              alt_names: "{{ monolith_providentia_fqdn }},{{ monolith_nexus_fqdn }},{{ monolith_keycloak_fqdn }},{{ monolith_vault_fqdn }},{{ monolith_gitlab_fqdn }}"
             body_format: json
             validate_certs: true
           register: cert_req

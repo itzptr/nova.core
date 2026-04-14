@@ -1,0 +1,8 @@
+---
+- name: Including GitLab role...
+  ansible.builtin.include_role:
+    name: nova.core.gitlab
+  vars:
+    gitlab_docker_network: "local-network"
+    gitlab_proxy_container_name: "caddy"
+  when: monolith_install_gitlab | bool

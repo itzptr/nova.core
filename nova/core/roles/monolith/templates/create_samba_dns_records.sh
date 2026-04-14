@@ -7,6 +7,7 @@ SERVICE_RECORDS=(
     "{{ monolith_nexus_fqdn.split('.')[0] }}|{{ monolith_nexus_fqdn }}"
     "{{ monolith_keycloak_fqdn.split('.')[0] }}|{{ monolith_keycloak_fqdn }}"
     "{{ monolith_vault_fqdn.split('.')[0] }}|{{ monolith_vault_fqdn }}"
+    "{{ monolith_gitlab_fqdn.split('.')[0] }}|{{ monolith_gitlab_fqdn }}"
 )
 
 CONNECTION_IPV4_FAMILY="{{ connection_address is ansible.utils.ipv4 }}"
