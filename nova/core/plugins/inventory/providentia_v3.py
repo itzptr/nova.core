@@ -197,7 +197,7 @@ class InventoryModule(BaseInventoryPlugin):
             with open(etag_file) as f:
                 headers["If-None-Match"] = f.read().strip()
 
-        async with self._session.get(url, headers=headers) as response:
+        async with self._session.get(url, headers=headers, ssl=False) as response:
             if response.status == 304:
                 with open(cache_file) as f:
                     return json.load(f)
@@ -305,7 +305,8 @@ class InventoryModule(BaseInventoryPlugin):
             token_url=self.sso_token_url,
             username=creds['username'],
             password=creds['password'],
-            client_id=self.sso_client_id)
+            client_id=self.sso_client_id,
+            verify=False)
 
         return token
 
