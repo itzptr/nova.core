@@ -5,4 +5,4 @@ This is a fork of an Ansible collection consisting of some roles and an inventor
 - [Clarified Security](https://www.clarifiedsecurity.com)
 - [CCDCOE](https://ccdcoe.org/)
 
-This has been customised by @itzptr for the purposes of the Cyber Upskilling Environment, focusing on lean infrastructure, efficient cyber exercise delivery, and quick development turnaround.
+This has been customised by [itzptr](https://github.com/itzptr) for the purposes of the Cyber Upskilling Environment, focusing on lean infrastructure, efficient cyber exercise delivery, and quick development turnaround.
