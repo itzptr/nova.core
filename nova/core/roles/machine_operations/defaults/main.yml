@@ -209,6 +209,8 @@ machine_operations_proxmox_vm_start_on_boot: true
 # True or false for all interfaces. Use a custom role/task to enable/disable per interface if needed
 machine_operations_proxmox_enable_firewall: true
 
+proxmox_machine_operations_operation_timeout: 300
+
 #############
 # OpenStack #
 #############
