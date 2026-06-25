@@ -33,6 +33,46 @@
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
 
+    # ------ Test file ------
+    - name: Adding test text file via Agent Exec pipeline...
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          command:
+            - /bin/sh
+            - -c
+            - "echo 'This plain text file was written successfully via Proxmox Agent Exec' > /tmp/api_exec_test.txt"
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: network_config_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
+    # ----- End of test file -----
+
+    # ------ Test file ------
+    - name: Adding test text config file via Agent Exec pipeline...
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          command:
+            - /bin/sh
+            - -c
+            - "echo 'This plain text file was written successfully via Proxmox Agent Exec' > /config/api_exec_test.txt"
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: network_config_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
+    # ----- End of test file -----
+
     - name: Creating reload wrapper script locally...
       ansible.builtin.copy:
         dest: /tmp/vyos_live_reload.sh
