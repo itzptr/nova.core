@@ -8,65 +8,62 @@ if [ "$(id -g -n)" != 'vyattacfg' ] ; then
     exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
 fi
 
-# Wait for system services to stabilize
-while true; do
-    if systemctl is-active --quiet ssh.service; then
-        break
-    else
-        sleep 1
-    fi
-done
-
 # Initialize the VyOS environment definitions
 source /opt/vyatta/etc/functions/script-template
+
+# Wait for the configuration engine wrapper to be completely readable
+while [ ! -x /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper ]; do
+    sleep 1
+done
+
 configure
 
-# Wipe existing structures cleanly so we don't end up with overlapping state
-delete interfaces
-delete protocols static
+# Wipe existing structures cleanly without confirmation prompts
+delete interfaces ethernet --force
+delete protocols static --force
 
 {% for interface in interfaces %}
-    {% set mac_address = configure_networking_mac_addresses[loop.index0] %}
-    
-    # Anchor the configuration block directly to the physical hardware MAC address
-    set interfaces ethernet eth{{ loop.index0 }} hw-id '{{ mac_address | lower }}'
-    set interfaces ethernet eth{{ loop.index0 }} description '{{ interface_names[loop.index0] | default("Interface " ~ loop.index0) }}'
+{% set mac_address = configure_networking_mac_addresses[loop.index0] %}
 
-    {% if interface.addresses | map(attribute='mode') | intersect(['ipv4_dhcp']) %}
-    set interfaces ethernet eth{{ loop.index0 }} address dhcp
-    {% endif %}
+# Anchor the configuration block directly to the physical hardware MAC address
+set interfaces ethernet eth{{ loop.index0 }} hw-id '{{ mac_address | lower }}'
+set interfaces ethernet eth{{ loop.index0 }} description '{{ interface_names[loop.index0] | default("Interface " ~ loop.index0) }}'
 
-    {% if interface.addresses | map(attribute='mode') | intersect(['ipv6_dhcp', 'ipv6_slaac']) %}
-    set interfaces ethernet eth{{ loop.index0 }} ipv6 address autoconf
-    set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options ia-na
-    set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options name-server update
-    {% endif %}
+{% if interface.addresses | map(attribute='mode') | intersect(['ipv4_dhcp']) %}
+set interfaces ethernet eth{{ loop.index0 }} address dhcp
+{% endif %}
 
-    {% if interface.addresses != [] %}
-        {% for ip_address in interface.addresses %}
-            {% if ip_address.mode == 'ipv4_static' %}
-            set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
-            {% endif %}
+{% if interface.addresses | map(attribute='mode') | intersect(['ipv6_dhcp', 'ipv6_slaac']) %}
+set interfaces ethernet eth{{ loop.index0 }} ipv6 address autoconf
+set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options ia-na
+set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options name-server update
+{% endif %}
 
-            {% if ip_address.mode == 'ipv6_static' %}
-            set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
-            {% endif %}
+{% if interface.addresses != [] %}
+{% for ip_address in interface.addresses %}
+{% if ip_address.mode == 'ipv4_static' %}
+set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
+{% endif %}
 
-            {% if (ip_address.mode == 'ipv4_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
-            set protocols static route 0.0.0.0/0 next-hop '{{ ip_address.gateway }}'
-            {% endif %}
+{% if ip_address.mode == 'ipv6_static' %}
+set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
+{% endif %}
 
-            {% if (ip_address.mode == 'ipv6_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
-            set protocols static route6 ::/0 next-hop '{{ ip_address.gateway }}'
-            {% endif %}
-        {% endfor %}
-    {% endif %}
+{% if (ip_address.mode == 'ipv4_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
+set protocols static route 0.0.0.0/0 next-hop '{{ ip_address.gateway }}'
+{% endif %}
+
+{% if (ip_address.mode == 'ipv6_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
+set protocols static route6 ::/0 next-hop '{{ ip_address.gateway }}'
+{% endif %}
+{% endfor %}
+{% endif %}
 {% endfor %}
 
 {% if dns_server_combined is defined and dns_server_combined != [] %}
-    {% for dns_server in dns_server_combined %}
-    set system name-server '{{ dns_server }}'
-    {% endfor %}
+{% for dns_server in dns_server_combined %}
+set system name-server '{{ dns_server }}'
+{% endfor %}
 {% endif %}
 
 # Commit changes, burn to disk, and gracefully exit
