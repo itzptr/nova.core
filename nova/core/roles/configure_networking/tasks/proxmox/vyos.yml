@@ -13,7 +13,7 @@
           command:
             - /bin/vbash
             - -c
-            - "configure && delete interfaces && set interfaces loopback lo && commit && save"
+            - "source /usr/libexec/vyos/init-config && configure && delete interfaces && set interfaces loopback lo && commit && save"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
