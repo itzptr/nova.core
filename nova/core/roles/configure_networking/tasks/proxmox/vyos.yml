@@ -15,7 +15,7 @@
         src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_apply_network.sh
       register: script_file_contents
 
-    # Write into /tmp
+    # Write
     - name: Dropping execution script into {{ custom_vm_name | default(vm_name) }} VM...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
@@ -26,7 +26,7 @@
           command:
             - /bin/sh
             - -c
-            - "cat << 'EOF' > /tmp/apply_network.sh\n{{ script_file_contents['content'] | b64decode }}\nEOF"
+            - "cat << 'EOF' > /home/vyos/apply_network.sh\n{{ script_file_contents['content'] | b64decode }}\nEOF"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -44,7 +44,7 @@
         body:
           command:
             - /bin/vbash
-            - /tmp/apply_network.sh
+            - /home/vyos/apply_network.sh
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
