@@ -5,15 +5,17 @@
   block:
     - name: Resetting VyOS NIC(s) for {{ inventory_hostname }}...
       ansible.builtin.uri:
-        url: >-
-          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
         headers:
-          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}""
         body:
-          command: /bin/vbash
-          input-data: >-
-            -c "sed -i '/interfaces/,/service/c\interfaces {\n    loopback lo { }\n}\nservice {' /config/config.boot"
+          command: /bin/sh
+          arg:
+            - -c
+            - >
+              sed -i '/interfaces/,/service/c\interfaces { loopback lo { } } service { }'
+              /config/config.boot
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -36,11 +38,10 @@
 
     - name: Waiting for QEMU Guest Agent...
       ansible.builtin.uri:
-        url: >-
-          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/ping
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/ping"
         method: GET
         headers:
-          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}""
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: guest_agent_ping
       retries: 60
@@ -61,15 +62,16 @@
 
     - name: Uploading config.boot_legacy...
       ansible.builtin.uri:
-        url: >-
-          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
         headers:
-          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}""
         body:
           command: /bin/sh
-          input-data: >-
-            -c "echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy"
+          arg:
+            - -c
+            - >
+              echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: file_upload_command
@@ -79,14 +81,15 @@
 
     - name: Configuring VyOS network for {{ inventory_hostname }}...
       ansible.builtin.uri:
-        url: >-
-          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
         headers:
-          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}""
         body:
-          command: /bin/vbash
-          input-data: /tmp/config.boot_legacy
+          command: /bin/sh
+          arg:
+            - -c
+            - "cp /tmp/config.boot_legacy /config/config.boot && reboot"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
