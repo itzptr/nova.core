@@ -1,0 +1,95 @@
+---
+- name: Configuring VyOS networking...
+  become: false
+  delegate_to: localhost
+  block:
+    - name: Resetting VyOS NIC(s) for {{ inventory_hostname }}...
+      ansible.builtin.uri:
+        url: >-
+          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+        method: POST
+        headers:
+          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+        body:
+          command: /bin/vbash
+          input-data: >-
+            -c "sed -i '/interfaces/,/service/c\interfaces {\n    loopback lo { }\n}\nservice {' /config/config.boot"
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: network_config_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
+
+    # Power cycle
+    - name: Shutting down {{ custom_vm_name | default(vm_name) }} VM...
+      ansible.builtin.include_role:
+        name: nova.core.powerstate
+      vars:
+        shutdown: true
+
+    - name: Starting {{ custom_vm_name | default(vm_name) }} VM...
+      ansible.builtin.include_role:
+        name: nova.core.powerstate
+      vars:
+        poweron: true
+
+    - name: Waiting for QEMU Guest Agent...
+      ansible.builtin.uri:
+        url: >-
+          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/ping
+        method: GET
+        headers:
+          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: guest_agent_ping
+      retries: 60
+      delay: 5
+      until: guest_agent_ping.status == 200
+
+    - name: Templating network configuration script...
+      ansible.builtin.template:
+        src: config.boot_legacy
+        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot_legacy
+        mode: "0644"
+        lstrip_blocks: true
+
+    - name: Reading config.boot_legacy...
+      ansible.builtin.slurp:
+        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot_legacy
+      register: config_boot_file
+
+    - name: Uploading config.boot_legacy...
+      ansible.builtin.uri:
+        url: >-
+          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+        method: POST
+        headers:
+          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+        body:
+          command: /bin/sh
+          input-data: >-
+            -c "echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy"
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: file_upload_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
+
+    - name: Configuring VyOS network for {{ inventory_hostname }}...
+      ansible.builtin.uri:
+        url: >-
+          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+        method: POST
+        headers:
+          Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
+        body:
+          command: /bin/vbash
+          input-data: /tmp/config.boot_legacy
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: network_config_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
