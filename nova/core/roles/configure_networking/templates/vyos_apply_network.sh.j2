@@ -9,8 +9,8 @@ fi
 source /opt/vyatta/etc/functions/script-template
 
 # Wait for the configuration engine wrapper to be completely readable
-while [ ! -x /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper ]; do
-    sleep 1
+while [ ! -f /tmp/vyos-config-status ]; do
+    sleep 2
 done
 
 # Wait for the Linux kernel to discover all interfaces
