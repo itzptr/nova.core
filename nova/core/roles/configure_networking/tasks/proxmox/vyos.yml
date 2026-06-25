@@ -84,9 +84,9 @@
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
           command:
-            - /bin/sh
+            - /bin/vbash
             - -c
-            - "cp /tmp/config.boot_legacy /config/config.boot && reboot"
+            - "source /opt/vyatta/etc/functions/script-template && configure && load /tmp/config.boot_legacy && commit && save && reboot"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
