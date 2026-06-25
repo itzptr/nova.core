@@ -10,17 +10,14 @@
         headers:
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
-          command: /bin/sh
-          arg:
-            - -c
-            - |
-                vbash <<EOF
-                configure
-                delete interfaces
-                set interfaces loopback lo
-                commit
-                save
-                EOF
+          command: >
+            /bin/sh -c "vbash <<'EOF'
+            configure
+            delete interfaces
+            set interfaces loopback lo
+            commit
+            save
+            EOF"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
