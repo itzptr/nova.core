@@ -60,21 +60,15 @@
 
     - name: Uploading config.boot_legacy...
       ansible.builtin.uri:
-        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
         method: POST
         headers:
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
-          command:
-            - /bin/sh
-            - -c
-            - "echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy"
+          content: "{{ config_boot_file.content | b64decode }}"
+          file: /tmp/config.boot_legacy
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
-      register: file_upload_command
-
-    - name: Including command run check task...
-      ansible.builtin.include_tasks: command_run_check.yml
 
     - name: Configuring VyOS network for {{ inventory_hostname }}...
       ansible.builtin.uri:
@@ -84,12 +78,25 @@
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
           command:
-            - /bin/sh
+            - /bin/vbash
             - -c
-            - "cp /tmp/config.boot_legacy /config/config.boot && reboot"
+            - "source /opt/vyatta/etc/functions/script-template && configure && load /tmp/config.boot_legacy && commit && save"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
 
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
+
+    # Reboot after final check safely passes
+    - name: Power cycling {{ custom_vm_name | default(vm_name) }} VM to apply settings...
+      ansible.builtin.include_role:
+        name: nova.core.powerstate
+      vars:
+        shutdown: true
+
+    - name: Starting {{ custom_vm_name | default(vm_name) }} VM after configuration...
+      ansible.builtin.include_role:
+        name: nova.core.powerstate
+      vars:
+        poweron: true
