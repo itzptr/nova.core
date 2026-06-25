@@ -26,7 +26,35 @@
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
 
-    - name: Live-reloading VyOS configuration engine...
+    # Live reloading
+    - name: Creating reload wrapper script locally...
+      ansible.builtin.copy:
+        dest: /tmp/vyos_live_reload.sh
+        mode: "0644"
+        content: |
+          #!/bin/vbash
+          if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+              exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+          fi
+          source /opt/vyatta/etc/functions/script-template
+          configure
+          load /config/config.boot
+          commit
+          exit
+
+    - name: Uploading reload script to VyOS...
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          content: "{{ lookup('file', '/tmp/vyos_live_reload.sh') }}"
+          file: /tmp/vyos_live_reload.sh
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+
+    - name: Executing clean configuration live reload...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
@@ -35,8 +63,7 @@
         body:
           command:
             - /bin/vbash
-            - -c
-            - 'sg vyattacfg -c "source /opt/vyatta/etc/functions/script-template && configure && load /config/config.boot && commit && exit"'
+            - /tmp/vyos_live_reload.sh
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
