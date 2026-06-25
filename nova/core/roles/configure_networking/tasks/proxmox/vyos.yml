@@ -6,7 +6,7 @@
     - name: Resetting VyOS NIC(s) for {{ inventory_hostname }}...
       ansible.builtin.uri:
         url: >-
-          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
         method: POST
         headers:
           Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
@@ -37,7 +37,7 @@
     - name: Waiting for QEMU Guest Agent...
       ansible.builtin.uri:
         url: >-
-          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/ping
+          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/ping
         method: GET
         headers:
           Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
@@ -62,7 +62,7 @@
     - name: Uploading config.boot_legacy...
       ansible.builtin.uri:
         url: >-
-          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
         method: POST
         headers:
           Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
@@ -80,7 +80,7 @@
     - name: Configuring VyOS network for {{ inventory_hostname }}...
       ansible.builtin.uri:
         url: >-
-          {{ proxmox_defaults.api_url }}/nodes/{{ proxmox_node }}/qemu/{{ configure_networking_proxmox_vmid }}/agent/exec
+          {{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec
         method: POST
         headers:
           Authorization: PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}
