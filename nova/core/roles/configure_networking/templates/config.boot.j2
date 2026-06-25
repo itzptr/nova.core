@@ -1,0 +1,61 @@
+interfaces {
+    {% for interface in interfaces %}
+    {% set mac_address = configure_networking_mac_addresses[loop.index0] %}
+    ethernet eth{{ loop.index0 }} {
+        {% if interface.addresses | map(attribute='mode') | intersect(['ipv4_dhcp']) %}
+        address dhcp
+        {% else %}
+        {% for ip_address in interface.addresses %}
+        {% if ip_address.mode == 'ipv4_static' or ip_address.mode == 'ipv6_static' %}
+        address "{{ ip_address.address }}"
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        description "{{ interface_names[loop.index0] | default('Interface ' ~ loop.index0) }}"
+        hw-id "{{ mac_address | lower }}"
+    }
+    {% endfor %}
+    loopback lo {
+    }
+}
+protocols {
+    static {
+        {% for interface in interfaces %}
+        {% for ip_address in interface.addresses %}
+        {% if (ip_address.mode == 'ipv4_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
+        route 0.0.0.0/0 {
+            next-hop {{ ip_address.gateway }}
+        }
+        {% endif %}
+        {% if (ip_address.mode == 'ipv6_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
+        route6 ::/0 {
+            next-hop {{ ip_address.gateway }}
+        }
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+    }
+}
+service {
+    ssh {
+        port 22
+    }
+}
+system {
+    config-management {
+        commit-revisions "100"
+    }
+    host-name "{{ inventory_hostname }}"
+    login {
+        user vyos {
+            authentication {
+                encrypted-password "$6$rounds=656000$efp9tSM4P6ZBSPIX$4rLc4h6BU2tJG.e9ZC/O/8UNSU7kg3SUgJkLLpOGYbhwvpQYKxhhI.0ykxgKz0DhBfQP1mF9D4kr3QEOQabhi."
+            }
+        }
+    }
+    {% if dns_server_combined is defined and dns_server_combined != [] %}
+    {% for dns_server in dns_server_combined %}
+    name-server "{{ dns_server }}"
+    {% endfor %}
+    {% endif %}
+}

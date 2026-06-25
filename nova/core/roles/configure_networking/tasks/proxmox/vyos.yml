@@ -1,90 +1,20 @@
 ---
-- name: Configuring VyOS networking...
+- name: Configuring VyOS networking via config.boot overwrite...
   become: false
   delegate_to: localhost
   block:
-    # Reset Interfaces
-    - name: Creating interface reset script locally...
-      ansible.builtin.copy:
-        dest: /tmp/vyos_reset_interfaces.sh
-        mode: "0644"
-        content: |
-          #!/bin/vbash
-          source /opt/vyatta/etc/functions/script-template
-          configure
-          delete interfaces
-          set interfaces loopback lo
-          commit
-          save
-
-    - name: Uploading interface reset script...
-      ansible.builtin.uri:
-        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
-        method: POST
-        headers:
-          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
-        body:
-          content: "{{ lookup('file', '/tmp/vyos_reset_interfaces.sh') }}"
-          file: /tmp/reset_interfaces.sh
-        body_format: json
-        validate_certs: "{{ proxmox_defaults.validate_certs }}"
-
-    - name: Executing interface reset script...
-      ansible.builtin.uri:
-        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
-        method: POST
-        headers:
-          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
-        body:
-          command:
-            - /bin/vbash
-            - /tmp/reset_interfaces.sh
-        body_format: json
-        validate_certs: "{{ proxmox_defaults.validate_certs }}"
-      register: network_config_command
-
-    - name: Including command run check task...
-      ansible.builtin.include_tasks: command_run_check.yml
-
-    # Power cycle
-    - name: Shutting down {{ custom_vm_name | default(vm_name) }} VM...
-      ansible.builtin.include_role:
-        name: nova.core.powerstate
-      vars:
-        shutdown: true
-
-    - name: Starting {{ custom_vm_name | default(vm_name) }} VM...
-      ansible.builtin.include_role:
-        name: nova.core.powerstate
-      vars:
-        poweron: true
-
-    - name: Waiting for QEMU Guest Agent...
-      ansible.builtin.uri:
-        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/ping"
-        method: POST
-        headers:
-          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
-        validate_certs: "{{ proxmox_defaults.validate_certs }}"
-      register: guest_agent_ping
-      retries: 60
-      delay: 5
-      until: guest_agent_ping.status == 200
-
-    # Apply template config
-    - name: Templating dynamic network configuration script...
+    - name: Templating raw VyOS tree configuration...
       ansible.builtin.template:
-        src: config.boot_legacy
-        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_setup.sh
+        src: config.boot.j2
+        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot
         mode: "0644"
-        lstrip_blocks: true
 
-    - name: Reading local rendered script...
+    - name: Reading local rendered configuration...
       ansible.builtin.slurp:
-        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_setup.sh
+        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot
       register: config_boot_file
 
-    - name: Uploading script to VyOS...
+    - name: Overwriting config.boot via Proxmox Guest Agent...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
         method: POST
@@ -92,11 +22,11 @@
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
           content: "{{ config_boot_file.content | b64decode }}"
-          file: /tmp/apply_network.sh
+          file: /config/config.boot
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
 
-    - name: Executing your dynamic configuration script...
+    - name: Live-reloading VyOS configuration engine...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
@@ -105,23 +35,11 @@
         body:
           command:
             - /bin/vbash
-            - /tmp/apply_network.sh
+            - -c
+            - 'sg vyattacfg -c "source /opt/vyatta/etc/functions/script-template && configure && load /config/config.boot && commit && exit"'
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
 
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
-
-    # Cycle again
-    - name: Power cycling {{ custom_vm_name | default(vm_name) }} VM to apply settings...
-      ansible.builtin.include_role:
-        name: nova.core.powerstate
-      vars:
-        shutdown: true
-
-    - name: Starting {{ custom_vm_name | default(vm_name) }} VM after configuration...
-      ansible.builtin.include_role:
-        name: nova.core.powerstate
-      vars:
-        poweron: true
