@@ -13,7 +13,7 @@
           command:
             - /bin/vbash
             - -c
-            - "source /opt/vyatta/etc/functions/script-template && configure && delete interfaces && set interfaces loopback lo && commit && save"
+            - "shopt -s expand_aliases && source /opt/vyatta/etc/functions/script-template && configure && delete interfaces && set interfaces loopback lo && commit && save"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -80,7 +80,7 @@
           command:
             - /bin/vbash
             - -c
-            - "source /opt/vyatta/etc/functions/script-template && configure && load /tmp/config.boot_legacy && commit && save"
+            - "shopt -s expand_aliases && source /opt/vyatta/etc/functions/script-template && configure && load /tmp/config.boot_legacy && commit && save"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -88,7 +88,7 @@
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
 
-    # Reboot after final check safely passes
+    # Out-of-band reboot after final check safely passes
     - name: Power cycling {{ custom_vm_name | default(vm_name) }} VM to apply settings...
       ansible.builtin.include_role:
         name: nova.core.powerstate
