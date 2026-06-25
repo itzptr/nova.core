@@ -3,6 +3,11 @@
 # Force logging to stay alive even if the script crashes early
 exec > /tmp/network.log 2>&1
 
+# Forces the script to run within the required VyOS configuration group
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
 # Wait for system services to stabilize
 while true; do
     if systemctl is-active --quiet ssh.service; then
