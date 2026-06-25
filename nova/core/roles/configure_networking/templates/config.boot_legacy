@@ -43,11 +43,11 @@ configure
         {% for ip_address in interface.addresses %}
 
             {% if ip_address.mode == 'ipv4_static' %}
-            set interface ethernet $INTERFACE_NAME address {{ ip_address.address }}
+            set interfaces ethernet $INTERFACE_NAME address {{ ip_address.address }}
             {% endif %}
 
             {% if ip_address.mode == 'ipv6_static' %}
-            set interface ethernet $INTERFACE_NAME address {{ ip_address.address }}
+            set interfaces ethernet $INTERFACE_NAME address {{ ip_address.address }}
             {% endif %}
 
             {% if (ip_address.mode == 'ipv4_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
