@@ -10,8 +10,10 @@
         headers:
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
-          command: >
-            /bin/vbash -c "configure; delete interfaces; set interfaces loopback lo; commit; save"
+          command:
+            - /bin/vbash
+            - -c
+            - "configure && delete interfaces && set interfaces loopback lo && commit && save"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -63,11 +65,10 @@
         headers:
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
-          command: /bin/sh
-          arg:
+          command:
+            - /bin/sh
             - -c
-            - >
-              echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy
+            - "echo '{{ config_boot_file.content }}' | base64 -d > /tmp/config.boot_legacy"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: file_upload_command
@@ -82,8 +83,8 @@
         headers:
           Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
         body:
-          command: /bin/sh
-          arg:
+          command:
+            - /bin/sh
             - -c
             - "cp /tmp/config.boot_legacy /config/config.boot && reboot"
         body_format: json
