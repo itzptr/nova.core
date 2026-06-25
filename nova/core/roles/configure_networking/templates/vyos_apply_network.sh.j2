@@ -1,8 +1,5 @@
 #!/bin/vbash
 
-# Force logging to stay alive even if the script crashes early
-exec > /tmp/network.log 2>&1
-
 # Forces the script to run within the required VyOS configuration group
 if [ "$(id -g -n)" != 'vyattacfg' ] ; then
     exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
@@ -17,10 +14,6 @@ while [ ! -x /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper ]; do
 done
 
 configure
-
-# Wipe existing structures cleanly without confirmation prompts
-delete interfaces ethernet --force
-delete protocols static --force
 
 {% for interface in interfaces %}
 {% set mac_address = configure_networking_mac_addresses[loop.index0] %}
