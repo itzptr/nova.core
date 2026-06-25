@@ -21,6 +21,9 @@ done
 source /opt/vyatta/etc/functions/script-template
 configure
 
+delete interfaces
+delete protocols static
+
 {% for interface in interfaces %}
     {% set mac_address = configure_networking_mac_addresses[loop.index0] %}
     
