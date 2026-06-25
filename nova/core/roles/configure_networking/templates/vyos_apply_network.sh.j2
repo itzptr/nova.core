@@ -13,6 +13,11 @@ while [ ! -x /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper ]; do
     sleep 1
 done
 
+# Wait for the Linux kernel to discover all interfaces
+while [ ! -d /sys/class/net/eth0 ] || [ ! -d /sys/class/net/eth1 ] || [ ! -d /sys/class/net/eth2 ]; do
+    sleep 2
+done
+
 configure
 
 {% for interface in interfaces %}
@@ -59,6 +64,8 @@ set protocols static route6 ::/0 next-hop '{{ ip_address.gateway }}'
 set system name-server '{{ dns_server }}'
 {% endfor %}
 {% endif %}
+
+set service ssh port '22'
 
 # Commit changes, burn to disk, and gracefully exit
 commit
