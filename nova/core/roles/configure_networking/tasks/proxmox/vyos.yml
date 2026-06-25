@@ -76,10 +76,10 @@
           pid: "{{ script_trigger.json.data.pid }}"
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: script_status
-      until: script_status.json.data.exited == 1
+      until: script_status['json']['data']['exited'] | default(0) == 1
       retries: 20
       delay: 2
 
     - name: Show absolute truth of what happened inside the script
       ansible.builtin.debug:
-        var: script_status.json.data
+        var: script_status['json']['data']
