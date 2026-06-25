@@ -1,0 +1,65 @@
+---
+- name: Configuring VyOS networking...
+  become: false
+  delegate_to: localhost
+  block:
+    # Render the script locally
+    - name: Templating network configuration script...
+      ansible.builtin.template:
+        src: vyos_apply_network.sh.j2
+        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_apply_network.sh
+        mode: "0644"
+
+    - name: Reading local rendered script...
+      ansible.builtin.slurp:
+        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_apply_network.sh
+      register: script_file_contents
+
+    # Write
+    - name: Dropping execution script into {{ custom_vm_name | default(vm_name) }} VM...
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          command:
+            - /bin/sh
+            - -c
+            - "cat << 'EOF' > /home/vyos/apply_network.sh\n{{ script_file_contents['content'] | b64decode }}\nEOF"
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: network_config_command
+
+    - name: Including command run check task...
+      ansible.builtin.include_tasks: command_run_check.yml
+
+    - name: Run the network configuration script
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          command:
+            - /bin/vbash
+            - /home/vyos/apply_network.sh
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: script_trigger
+
+    - name: Poll execution status
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec-status?pid={{ script_trigger['json']['data']['pid'] }}"
+        method: GET
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+      register: script_status
+      until: script_status['json']['data']['exited'] | default(0) == 1
+      retries: 30
+      delay: 3
+
+    - name: Show absolute truth of what happened inside the script
+      ansible.builtin.debug:
+        var: script_status['json']['data']
