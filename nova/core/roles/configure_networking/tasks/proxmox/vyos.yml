@@ -1,21 +1,22 @@
 ---
-- name: Configuring VyOS networking via Agent Exec...
+- name: Configuring VyOS networking...
   become: false
   delegate_to: localhost
   block:
-    # Render template locally
-    - name: Templating raw VyOS configuration...
+    # Render the script locally
+    - name: Templating network configuration script...
       ansible.builtin.template:
-        src: config.boot.j2
-        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot
+        src: vyos_apply_network.sh.j2
+        dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_apply_network.sh
         mode: "0644"
 
-    - name: Reading local rendered configuration...
+    - name: Reading local rendered script...
       ansible.builtin.slurp:
-        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot
-      register: config_boot_file
+        src: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_apply_network.sh
+      register: script_file_contents
 
-    - name: Overwriting config.boot template inside /tmp via Agent Exec...
+    # Write into /tmp
+    - name: Dropping execution script into {{ custom_vm_name | default(vm_name) }} VM...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
@@ -25,7 +26,7 @@
           command:
             - /bin/sh
             - -c
-            - "cat << 'EOF' > /tmp/config.boot\n{{ config_boot_file['content'] | b64decode }}\nEOF"
+            - "cat << 'EOF' > /tmp/apply_network.sh\n{{ script_file_contents['content'] | b64decode }}\nEOF"
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
@@ -33,45 +34,8 @@
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
 
-    - name: Creating reload wrapper script locally...
-      ansible.builtin.copy:
-        dest: /tmp/vyos_live_reload.sh
-        mode: "0644"
-        content: |
-          #!/bin/vbash
-          # Force the script to execute under the authorized vyattacfg group context
-          if [ "$(id -g -n)" != 'vyattacfg' ] ; then
-              exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
-          fi
-          
-          # Safely copy from /tmp to /config now that we are inside the proper group
-          cp /tmp/config.boot /config/config.boot
-          chown vyos:vyattacfg /config/config.boot
-          chmod 664 /config/config.boot
-
-          # Standard VyOS script template environment loading
-          source /opt/vyatta/etc/functions/script-template
-          
-          # Fire the reload
-          configure
-          load /config/config.boot
-          commit
-          save
-          exit
-
-    - name: Uploading reload script to VyOS...
-      ansible.builtin.uri:
-        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
-        method: POST
-        headers:
-          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
-        body:
-          content: "{{ lookup('file', '/tmp/vyos_live_reload.sh') }}"
-          file: /tmp/vyos_live_reload.sh
-        body_format: json
-        validate_certs: "{{ proxmox_defaults.validate_certs }}"
-
-    - name: Executing clean configuration live reload...
+    # Run the script
+    - name: Executing configuration script...
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
@@ -80,7 +44,7 @@
         body:
           command:
             - /bin/vbash
-            - /tmp/vyos_live_reload.sh
+            - /tmp/apply_network.sh
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
       register: network_config_command
