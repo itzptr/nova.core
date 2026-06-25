@@ -3,7 +3,7 @@
   become: false
   delegate_to: localhost
   block:
-    - name: Templating raw VyOS tree configuration...
+    - name: Templating raw VyOS configuration...
       ansible.builtin.template:
         src: config.boot.j2
         dest: /tmp/{{ project_fullname | default('') }}_{{ inventory_hostname }}_config.boot
@@ -23,6 +23,18 @@
         body:
           content: "{{ config_boot_file.content | b64decode }}"
           file: /config/config.boot
+        body_format: json
+        validate_certs: "{{ proxmox_defaults.validate_certs }}"
+
+    - name: Adding test text file via Proxmox Guest Agent...
+      ansible.builtin.uri:
+        url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/file-write"
+        method: POST
+        headers:
+          Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
+        body:
+          content: "{{ config_boot_file.content | b64decode }}"
+          file: /config/config_boot_test.txt
         body_format: json
         validate_certs: "{{ proxmox_defaults.validate_certs }}"
 
