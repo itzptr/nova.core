@@ -16,30 +16,31 @@ done
 configure
 
 {% for interface in interfaces %}
-{% set mac_address = configure_networking_mac_addresses[loop.index0] %}
+{% set iface_index = loop.index0 %} {# Save the correct interface number right here #}
+{% set mac_address = configure_networking_mac_addresses[iface_index] %}
 
 # Anchor the configuration block directly to the physical hardware MAC address
-set interfaces ethernet eth{{ loop.index0 }} hw-id '{{ mac_address | lower }}'
-set interfaces ethernet eth{{ loop.index0 }} description '{{ interface_names[loop.index0] | default("Interface " ~ loop.index0) }}'
+set interfaces ethernet eth{{ iface_index }} hw-id '{{ mac_address | lower }}'
+set interfaces ethernet eth{{ iface_index }} description '{{ interface_names[iface_index] | default("Interface " ~ iface_index) }}'
 
 {% if interface.addresses | map(attribute='mode') | intersect(['ipv4_dhcp']) %}
-set interfaces ethernet eth{{ loop.index0 }} address dhcp
+set interfaces ethernet eth{{ iface_index }} address dhcp
 {% endif %}
 
 {% if interface.addresses | map(attribute='mode') | intersect(['ipv6_dhcp', 'ipv6_slaac']) %}
-set interfaces ethernet eth{{ loop.index0 }} ipv6 address autoconf
-set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options ia-na
-set interfaces ethernet eth{{ loop.index0 }} ipv6 dhcpv6-options name-server update
+set interfaces ethernet eth{{ iface_index }} ipv6 address autoconf
+set interfaces ethernet eth{{ iface_index }} ipv6 dhcpv6-options ia-na
+set interfaces ethernet eth{{ iface_index }} ipv6 dhcpv6-options name-server update
 {% endif %}
 
 {% if interface.addresses != [] %}
 {% for ip_address in interface.addresses %}
 {% if ip_address.mode == 'ipv4_static' %}
-set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
+set interfaces ethernet eth{{ iface_index }} address '{{ ip_address.address }}'
 {% endif %}
 
 {% if ip_address.mode == 'ipv6_static' %}
-set interfaces ethernet eth{{ loop.index0 }} address '{{ ip_address.address }}'
+set interfaces ethernet eth{{ iface_index }} address '{{ ip_address.address }}'
 {% endif %}
 
 {% if (ip_address.mode == 'ipv4_static') and (no_gateway is not defined) and (ip_address.gateway != none) %}
