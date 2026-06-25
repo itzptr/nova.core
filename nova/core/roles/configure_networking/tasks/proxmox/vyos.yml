@@ -34,25 +34,7 @@
     - name: Including command run check task...
       ansible.builtin.include_tasks: command_run_check.yml
 
-    # # Run the script
-    # - name: Executing configuration script...
-    #   ansible.builtin.uri:
-    #     url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
-    #     method: POST
-    #     headers:
-    #       Authorization: "PVEAPIToken={{ proxmox_defaults.api_user }}!{{ proxmox_defaults.api_token_id }}={{ proxmox_defaults.api_token_secret }}"
-    #     body:
-    #       command:
-    #         - /bin/vbash
-    #         - /home/vyos/apply_network.sh
-    #     body_format: json
-    #     validate_certs: "{{ proxmox_defaults.validate_certs }}"
-    #   register: network_config_command
-
-    # - name: Including command run check task...
-    #   ansible.builtin.include_tasks: command_run_check.yml
-
-    - name: Kick off the network configuration script
+    - name: Run the network configuration script
       ansible.builtin.uri:
         url: "{{ proxmox_api_url }}/nodes/{{ cfg_net_proxmox_node }}/qemu/{{ cfg_net_proxmox_vmid }}/agent/exec"
         method: POST
