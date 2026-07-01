@@ -6,7 +6,7 @@
     body:
       password: "{{ vault_password }}"
     status_code: 200
-    validate_certs: "{{ validate_vault_certs }}"
+    validate_certs: false
     body_format: json
   register: auth
   delegate_to: localhost
