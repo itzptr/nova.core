@@ -17,18 +17,18 @@
           - 404
       register: existing_secrets
 
-    - name: Creating {{ secrets_by_group | map(attribute='vault_path') | first }} path...
-      ansible.builtin.uri:
-        url: "{{ secrets_by_group | map(attribute='vault_path') | first }}"
-        method: POST
-        headers:
-          X-Vault-Request: true
-          X-Vault-Token: "{{ vault_access_token | default(auth.json.auth.client_token) }}"
-        body:
-          data: {}
-        validate_certs: "{{ validate_vault_certs }}"
-        body_format: json
-      when: existing_secrets.status == 404
+    # - name: Creating {{ secrets_by_group | map(attribute='vault_path') | first }} path...
+    #   ansible.builtin.uri:
+    #     url: "{{ secrets_by_group | map(attribute='vault_path') | first }}"
+    #     method: POST
+    #     headers:
+    #       X-Vault-Request: true
+    #       X-Vault-Token: "{{ vault_access_token | default(auth.json.auth.client_token) }}"
+    #     body:
+    #       data: {}
+    #     validate_certs: "{{ validate_vault_certs }}"
+    #     body_format: json
+    #   when: existing_secrets.status == 404
 
     - name: Updating following secrets in {{ secrets_by_group | map(attribute='vault_path') | first }}...
       ansible.builtin.uri:
