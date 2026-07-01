@@ -6,7 +6,7 @@
     - name: Listing all secrets in {{ secrets_by_group | map(attribute='vault_path') | first }}...
       ansible.builtin.uri:
         url: "{{ secrets_by_group | map(attribute='vault_path') | first }}"
-        method: GET
+        method: LIST
         headers:
           X-Vault-Request: true
           X-Vault-Token: "{{ vault_access_token | default(auth.json.auth.client_token) }}"
