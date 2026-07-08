@@ -8,7 +8,8 @@
 secrets_to_vault_account_passwords: true
 
 # Vault key name when saving account passwords to Vault to make sure it's unique across the inventory.
-account_key_name: "{{ inventory_hostname }}_{{ sct.username }}"
+#account_key_name: "{{ inventory_hostname }}_{{ sct.username }}"
+account_key_name: "{{ inventory_hostname }}_accounts"
 
 # List of admin accounts to save to Vault usually defined in group_vars/all.yml
 admin_accounts: []
